@@ -20,6 +20,12 @@
 | 真实 Ollama 推理 | NOT TESTED | 云机未安装 Ollama 或模型。可在模型已就绪的本机设置环境变量，在资料页选择摘录并提问。 |
 | Windows 双击启动实机验收 | NOT TESTED | 已提供 start.cmd 及版本固定的安装步骤，同一 Python 启动器在 Linux 虚拟环境已运行。原生 Windows 的批处理、浏览器唤起和整套验收需在 Windows 执行。[Windows 步骤](../README.md) |
 
+## GitHub 审查状态
+
+独立分支 `feature/zhixu-tutor` 已成功推送，M4 提交为 `5cd78c4`。通过 GitHub CLI 创建草稿 PR 时，GitHub API 请求返回 `Post "https://api.github.com/graphql": Forbidden`，权限重试结果相同。PR 描述已随代码提交，可使用 GitHub 网页创建草稿；目标分支为 main。
+
+[创建 PR](https://github.com/liuxingdeyunff/-AI/pull/new/feature/zhixu-tutor) · [审查说明](PULL_REQUEST.md)
+
 ## 复现与输出
 
 在仓库根目录安装依赖后运行下列命令。Playwright 依赖与浏览器安装步骤见 README。
