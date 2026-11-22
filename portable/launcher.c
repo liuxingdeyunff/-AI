@@ -7,13 +7,15 @@
 
 static int fail(const wchar_t *message) {
     wchar_t path[32768], dir[32000];
-    if (GetEnvironmentVariableW(L"LOCALAPPDATA", dir, 31960) > 0) {
+    DWORD count = GetEnvironmentVariableW(L"LOCALAPPDATA", dir, 31960);
+    if (count > 0 && count < 31960) {
         wcscat(dir, L"\\ZhixuAI");
         CreateDirectoryW(dir, NULL);
         swprintf(path, 32768, L"%ls\\launcher.log", dir);
         FILE *file = _wfopen(path, L"a, ccs=UTF-8");
         if (file) { fwprintf(file, L"%ls\n", message); fclose(file); }
     }
+    if (GetEnvironmentVariableW(L"ZHIXU_ACCEPTANCE",NULL,0)) return 1;
     MessageBoxW(NULL, message, L"知序 AI · 无法启动", MB_OK | MB_ICONERROR);
     return 1;
 }

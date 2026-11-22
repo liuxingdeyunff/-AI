@@ -32,6 +32,13 @@ jobs:
           python portable/build.py
       - name: Test extracted EXE with developer tools removed from child PATH
         run: python portable/check.py out/ZhixuAI-Windows-x64.zip
+      - name: Run ZIP on clean Windows Server Core without Python or Node
+        shell: pwsh
+        run: |
+          Copy-Item portable/clean-windows.ps1 out
+          $payload = (Resolve-Path out).Path
+          docker run --rm --mount "type=bind,source=$payload,target=C:\payload,readonly" mcr.microsoft.com/windows/servercore:ltsc2022 powershell -NoProfile -ExecutionPolicy Bypass -File C:\payload\clean-windows.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - run: python -m playwright install chromium
       - name: Browser acceptance against extracted Windows EXE
         run: |
@@ -66,3 +73,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" publish/* --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "知序 AI · Windows x64 $GITHUB_REF_NAME" --notes "解压后双击知序AI.exe。此包通过了 Windows Runner 打包与浏览器验收。"
 
+  review:
+    needs: portable
+    if: github.ref == 'refs/heads/feature/portable-adaptive-tutor'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Open the requested draft for maintainer review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh pr list --base main --head feature/portable-adaptive-tutor --json url --jq '.[0].url // ""')
+          if [ -n "$existing" ]; then echo "$existing"; else
+            gh pr create --draft --base main --head feature/portable-adaptive-tutor --title "第二轮：Windows 便携软件、资料研读与适应式教学" --body-file docs/PULL_REQUEST.md
+          fi

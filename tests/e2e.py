@@ -102,6 +102,7 @@ def run():
                     page.locator(f'input[value="{a}"]').check()
                 else:
                     page.locator("input[name=answer]").fill(a)
+                if i==1: page.locator("textarea[name=steps]").fill("我直接把 sin(x) 代换成 x。")
                 page.get_by_role("button", name="提交答案").click()
                 expect(
                     page.get_by_role(
@@ -112,6 +113,19 @@ def run():
                     expect(
                         page.get_by_text("建议排查 · 忽略相消后的高阶项")
                     ).to_be_visible()
+                    page.get_by_role("link",name="复盘思路与针对性变式").click()
+                    expect(page.get_by_text("我直接把 sin(x) 代换成 x。",exact=True)).to_be_visible()
+                    page.locator("#method select").select_option("expansion")
+                    page.get_by_role("button",name="按我的思路调整练习").click()
+                    expect(page.locator("#variant")).to_contain_text("难度 2/3")
+                    page.locator("#variant input[name=answer]").fill("0")
+                    page.get_by_role("button",name="校验变式").click()
+                    expect(page.locator("#variant")).to_contain_text("难度 1/3")
+                    expect(page.locator("#variant-history")).to_contain_text("需巩固")
+                    page.screenshot(path=EVIDENCE/"coaching.png",full_page=True)
+                    page.get_by_role("link",name="诊断测试",exact=True).click()
+                    print("PASS entered reasoning, method clarification, verified variant and difficulty decrease")
+                    continue
                 page.locator("#next").click()
             expect(page.get_by_role("heading", name="诊断报告")).to_be_visible()
             print(
@@ -132,7 +146,8 @@ def run():
                 page.get_by_role("button", name="导出 JSON").click()
             backup = work / "backup.json"
             download.value.save_as(backup)
-            assert len(json.loads(backup.read_bytes())["attempts"]) == 11
+            records=json.loads(backup.read_bytes())["attempts"]
+            assert len(records)==11 and records[1]["evidence"]["trials"][0]["ok"]==False
             stop(p)
             p, url = start(work / "store.db")
             page.goto(url + "/#progress")
