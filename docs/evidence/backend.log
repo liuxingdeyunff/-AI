@@ -1,0 +1,14 @@
+test_course_links (test_courses.Curriculum.test_course_links) ... ok
+test_review (test_learning.HistoryTests.test_review) ... ok
+test_submit_retry (test_learning.HistoryTests.test_submit_retry) ... ok
+test_common_mistakes (test_learning.MathTests.test_common_mistakes) ... ok
+test_reference_answers (test_learning.MathTests.test_reference_answers) ... ok
+test_model_permission (test_materials.Imports.test_model_permission) ... ok
+test_pdf (test_materials.Imports.test_pdf) ... ok
+test_restore_is_atomic (test_materials.Imports.test_restore_is_atomic) ... ok
+test_text_anchors (test_materials.Imports.test_text_anchors) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.532s
+
+OK
