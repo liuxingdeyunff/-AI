@@ -1,0 +1,68 @@
+name: Windows portable acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/portable-adaptive-tutor]
+    tags: ['v0.2.*']
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+jobs:
+  portable:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Build x64 launcher and self-contained ZIP
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          python portable/build.py
+      - name: Test extracted EXE with developer tools removed from child PATH
+        run: python portable/check.py out/ZhixuAI-Windows-x64.zip
+      - run: python -m playwright install chromium
+      - name: Browser acceptance against extracted Windows EXE
+        run: |
+          Expand-Archive out/ZhixuAI-Windows-x64.zip out/unpacked
+          $env:ZHIXU_UNPACKED=(Resolve-Path out/unpacked/ZhixuAI-Windows-x64).Path
+          python tests/e2e.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZhixuAI-Windows-x64
+          path: |
+            out/*.zip
+            out/SHA256SUMS.txt
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-screenshots
+          path: docs/evidence/*.png
+  release:
+    needs: portable
+    if: startsWith(github.ref, 'refs/tags/v0.2.')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ZhixuAI-Windows-x64
+          path: publish
+      - name: Publish tested prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" publish/* --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "知序 AI · Windows x64 $GITHUB_REF_NAME" --notes "解压后双击知序AI.exe。此包通过了 Windows Runner 打包与浏览器验收。"
+

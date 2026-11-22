@@ -30,6 +30,8 @@ class Handler(SimpleHTTPRequestHandler):
             f"localhost:{self.server.server_port}",
         ):
             return self.reply({"error": "仅限本机"}, 403)
+        if self.path == "/api/instance":
+            return self.reply(getattr(self.server, "instance", None))
         if self.path == "/api/documents":
             return self.reply(documents())
         if self.path == "/api/model":

@@ -19,7 +19,19 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "docs" / "evidence"
 
 
+def stop(p):
+    if hasattr(p,"stop"):
+        p.stop()
+    else:
+        p.terminate()
+        p.wait(timeout=10)
+
+
 def start(db):
+    if os.environ.get("ZHIXU_UNPACKED"):
+        from portable.check import PackagedServer
+        app = PackagedServer(Path(os.environ["ZHIXU_UNPACKED"]),db.parent/"profile")
+        return app,app.url
     p = subprocess.Popen(
         [sys.executable, "-u", str(ROOT / "server.py"), "--port", "0"],
         cwd=ROOT,
@@ -121,8 +133,7 @@ def run():
             backup = work / "backup.json"
             download.value.save_as(backup)
             assert len(json.loads(backup.read_bytes())["attempts"]) == 11
-            p.terminate()
-            p.wait(timeout=10)
+            stop(p)
             p, url = start(work / "store.db")
             page.goto(url + "/#progress")
             expect(page.get_by_text("复习 · 正确", exact=False)).to_be_visible()
@@ -193,8 +204,7 @@ def run():
             )
             browser.close()
         finally:
-            p.terminate()
-            p.wait(timeout=10)
+            stop(p)
 
 
 if __name__ == "__main__":
