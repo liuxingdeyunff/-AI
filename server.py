@@ -5,6 +5,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from courses import units
+from bank import bank, public
+from learning import record, state
 
 ROOT = Path(__file__).resolve().parent
 
@@ -21,7 +23,24 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if urlsplit(self.path).path == "/api/units":
             return self.reply(units)
+        if self.path == "/api/state": return self.reply(state())
+        if self.path == "/api/questions": return self.reply([public(q) for q in bank.values()])
         super().do_GET()
+
+    def do_POST(self):
+        origin=self.headers.get("Origin")
+        if self.headers.get("Host") not in (f"127.0.0.1:{self.server.server_port}",f"localhost:{self.server.server_port}") or (origin and origin != "http://"+self.headers.get("Host","")):
+            return self.reply({"error":"只允许本机同源请求"},403)
+        try:
+            size=int(self.headers.get("Content-Length","0"))
+            if not 0<size<=8_000_000: raise ValueError("请求为空或超过大小限制")
+            if self.headers.get_content_type()!="application/json": raise ValueError("请求必须为 JSON")
+            data=json.loads(self.rfile.read(size))
+            if not isinstance(data,dict): raise ValueError("需要 JSON 对象")
+            if self.path=="/api/answer": return self.reply(record(data))
+            return self.reply({"error":"接口不存在"},404)
+        except (ValueError,KeyError,TypeError) as error:
+            self.reply({"error":str(error)},400)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

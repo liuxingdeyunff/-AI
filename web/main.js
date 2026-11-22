@@ -12,7 +12,7 @@ let units=[],state={attempts:[],reviews:[],scores:{}}
 const nav=[['home','学习总览','LayoutDashboard'],['courses','课程单元','BookOpen'],['map','知识图谱','Network'],['quiz','诊断测试','ClipboardList'],['review','错题与复习','History'],['library','资料库','Library'],['progress','个人进度','ChartNoAxesColumnIncreasing']]
 const groups=['极限与连续','导数与微分','中值与展开']
 const glyph=['lim','ƒ ′','Σ']
-const counts=()=>[units.length,state.attempts.length,state.reviews.length]
+const counts=()=>[units.length,state.attempts.length,state.reviews.filter(r=>r.ready).length]
 const link=(href,label,cls='')=>`<a class="${cls}" href="#${href}">${label}</a>`
 const inner=id=>units[id]
 function shell(page,content) {
@@ -42,8 +42,53 @@ async function render(){document.body.classList.remove('open')
  bind(page,id)
  }catch(e){shell(page,heading('暂时无法打开',esc(e.message))+'<button onclick="location.reload()">重新加载</button>')}
 }
-async function extra(){return courses()}
-function bind(){}
-async function init(){try{units=await api('units');await render()}catch(e){shell('home',heading('连接失败','请确认本地服务正在运行。')+'<button onclick="location.reload()">重试</button>')}}
+let questions=[], current=null, feedback=null, hint=0, activeRoute=''
+const findQ=k=>questions.find(q=>q.id===k)
+const score=u=>state.scores[u.id]===undefined?'尚无作答证据':`估计掌握度 ${state.scores[u.id]}%`
+function summary(){return `<section class="panel"><h2>诊断报告</h2><p>已完成 10 个单元的诊断。掌握度按每道不同题目的最近一次结果计算。</p>${link('review','查看错题与复习','button')} ${link('map','查看知识图谱','button muted')}</section>`}
+function exercise(mode,id){
+ const route=mode+'/'+id
+ if(route!==activeRoute){feedback=null;hint=0;current=null;activeRoute=route}
+ if(!current){
+ const done=new Set(state.attempts.filter(r=>r.mode==='quiz').map(r=>r.q))
+ if(mode==='quiz')current=questions.find(q=>q.diagnostic&&!done.has(q.id))
+ else if(mode==='redo')current=findQ(id)
+ else {const qs=questions.filter(q=>q.unit===Number(id)&&!q.diagnostic);current=qs.find(q=>!state.attempts.some(r=>r.q===q.id))||qs.slice().sort((a,b)=>last(a)-last(b))[0]}
+ }
+ if(!current)return heading('能力诊断','逐单元识别需要巩固的知识。')+summary()
+ const q=current,u=inner(q.unit)
+ return heading(mode==='quiz'?'能力诊断':mode==='redo'?'错题重做':'单元练习',u.name+' · '+q.source)+`<section class="panel lesson"><small>${mode==='quiz'?'诊断 '+(q.unit+1)+' / 10':q.level}</small><h2>${q.text}</h2>${q.tex?`<div class="formula">${math(q.tex)}</div>`:''}${feedback?`<div class="feedback"><h3>${feedback.ok?'回答正确':'这一步需要再检查'}</h3><p>${feedback.reason}</p>${feedback.ok?'':`<strong>建议排查 · ${feedback.error}</strong><p>下一步　${link('unit/'+feedback.prereq,'复习「'+inner(feedback.prereq).name+'」')}</p>`}</div><button id="next">${mode==='redo'?'返回复习计划':mode==='quiz'&&q.unit===9?'查看诊断报告':'继续下一题'}</button>`:`<form id="response"><div class="answer">${q.choices.length?q.choices.map((v,i)=>`<label class="opt"><input type="radio" name="answer" value="${i}" required>${v}</label>`).join(''):'<label>你的答案 <input name="answer" required maxlength="120" autocomplete="off" placeholder="如 -1/6 或 x^2+2*x"></label>'}</div><button>提交答案</button><button type="button" class="muted" id="hint" ${hint===2?'disabled':''}>提示 ${hint}/2</button><div id="hints" aria-live="polite"></div><p role="alert" id="error"></p></form>`}</section>`
+}
+function last(q){return state.attempts.filter(r=>r.q===q.id).at(-1)?.id||0}
+function knowledge(){return heading('知识图谱','先修连线表示建议学习顺序。点击知识点可以查看讲义与练习。')+units.map(u=>`<section class="panel"><small>${u.group} · ${u.source}</small><h2>${link('unit/'+u.id,u.name)}</h2><p>${score(u)}　·　建议先修　${u.prereq.map(i=>link('unit/'+i,inner(i).name)).join(' → ')||'起点'}</p><p>${state.reviews.filter(r=>r.unit===u.id).map(r=>link('redo/'+r.q,'关联错题 '+r.q)).join('　')}</p>${materialLinks(u.id)}</section>`).join('')}
+function reviews(){return heading('错题与复习','答错的题当天复习，重做正确后间隔 3 天再次巩固。')+`<section class="panel"><h2>复习计划</h2>${state.reviews.map(r=>`<div class="unitrow"><span class="symbol g2">↻</span><div><strong>${inner(r.unit).name} · ${r.error}</strong><small>${r.ready?'到期可复习':'下次巩固'} · ${r.due} · ${r.q}</small>${link('redo/'+r.q,'重做这道题')}　${link('unit/'+(inner(r.unit).prereq[0]??r.unit),'回看前置知识')}</div></div>`).join('')||'<p>还没有错题。完成诊断后，需要巩固的题会出现在这里。</p>'}</section>`}
+function progress(){return heading('个人进度','按不同题目的最近一次作答估计掌握度，重复答同一题只更新该题证据。')+`<section class="panel"><h2>单元掌握情况</h2>${units.map(u=>`<div class="unitrow"><strong>${u.name}</strong><progress max="100" value="${state.scores[u.id]||0}"></progress><small>${score(u)}</small></div>`).join('')}</section><section class="panel"><h2>学习记录</h2>${state.attempts.slice(-40).reverse().map(r=>`<p>${r.day} · ${inner(findQ(r.q).unit).name} · ${{quiz:'诊断',practice:'练习',review:'复习'}[r.mode]} · ${r.ok?'正确':'需巩固'}</p>`).join('')||'完成第一题后即可查看记录。'}</section>`+backupUI()}
+async function extra(page,id){
+ if(['practice','quiz','redo'].includes(page))return exercise(page,id)
+ if(page==='map')return knowledge()
+ if(page==='review')return reviews()
+ if(page==='progress')return progress()
+ return library(id)
+}
+function bind(page,id){
+ if(!['quiz','practice','redo'].includes(page))activeRoute=''
+ const form=document.querySelector('#response')
+ if(form){
+ const h=document.querySelector('#hint')
+ h.onclick=()=>{hint=Math.min(2,hint+1);h.textContent='提示 '+hint+'/2';h.disabled=hint===2;document.querySelector('#hints').textContent=current.hints.slice(0,hint).join('　')}
+ form.onsubmit=async e=>{e.preventDefault();const btn=form.querySelector('button');btn.disabled=true
+ try{feedback=await api('answer',{q:current.id,answer:new FormData(form).get('answer'),mode:page==='redo'?'review':page});state=await api('state');await render()}
+ catch(e){document.querySelector('#error').textContent=e.message;btn.disabled=false}}
+ }
+ const next=document.querySelector('#next')
+ if(next)next.onclick=()=>{current=null;feedback=null;hint=0;if(page==='redo')location.hash='review';else render()}
+ bindMaterials(page,id)
+}
+function library(){return heading('资料库','内置原创示例')+courses()}
+function materialLinks(){return ''}
+function backupUI(){return ''}
+function bindMaterials(){}
+
+async function init(){try{[units,state,questions]=await Promise.all([api('units'),api('state'),api('questions')]);await render()}catch(e){shell('home',heading('连接失败','请确认本地服务正在运行。')+'<button onclick="location.reload()">重试</button>')}}
 window.addEventListener('hashchange',()=>{window.scrollTo(0,0);render()})
 init()
