@@ -33,5 +33,10 @@ def run():
         if os.environ.get('GITHUB_STEP_SUMMARY'):
             with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as out:
                 out.write(f"模型 {name}，生成 {len(g['units'])} 个可定位单元，用时 {g['meta']['seconds']} 秒。学习追问用时 {reply['meta']['seconds']} 秒，模型 API 费用 0 美元。\n")
-if __name__=='__main__': run()
+if __name__=='__main__':
+    try: run()
+    except Exception as e:
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(f"::error title=Live model acceptance::{type(e).__name__}: {e}",flush=True)
+        raise
 
