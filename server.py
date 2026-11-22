@@ -5,6 +5,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from courses import units
+from materials import documents, upload, restore
+from provider import ask, model
 from bank import bank, public
 from learning import record, state
 
@@ -21,6 +23,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self):
+        if self.headers.get("Host") not in (f"127.0.0.1:{self.server.server_port}",f"localhost:{self.server.server_port}"): return self.reply({"error":"仅限本机"},403)
+        if self.path == "/api/documents": return self.reply(documents())
+        if self.path == "/api/model": return self.reply(model())
         if urlsplit(self.path).path == "/api/units":
             return self.reply(units)
         if self.path == "/api/state": return self.reply(state())
@@ -37,6 +42,8 @@ class Handler(SimpleHTTPRequestHandler):
             if self.headers.get_content_type()!="application/json": raise ValueError("请求必须为 JSON")
             data=json.loads(self.rfile.read(size))
             if not isinstance(data,dict): raise ValueError("需要 JSON 对象")
+            for route,action in [("/api/upload",upload),("/api/restore",restore),("/api/ask",ask)]:
+                if self.path==route: return self.reply(action(data))
             if self.path=="/api/answer": return self.reply(record(data))
             return self.reply({"error":"接口不存在"},404)
         except (ValueError,KeyError,TypeError) as error:

@@ -27,7 +27,7 @@ function tile(u){return link('unit/'+u.id,`<span class="symbol g${groups.indexOf
 function home(){return heading('学习总览','从一次诊断开始，找到适合你的高数学习路径。')+`<section class="hero"><canvas id="surface" aria-label="二元函数的曲面网格图"></canvas><div><label>${ico('GraduationCap')} 高等数学 · 第一学期</label><h2>高等数学能力诊断</h2><p>从极限到泰勒展开，定位薄弱环节。<br>用 10 道题，生成你的专属学习建议。</p>${startLink()}</div></section><div class="metrics">${['课程单元','已答题次','待巩固错题'].map((t,i)=>`<section><span class="metricicon g${i}">${ico(['Layers','ListChecks','Target'][i])}</span><div><small>${t}</small><strong>${counts()[i]} <em>${['个','次','道'][i]}</em></strong></div></section>`).join('')}</div><div class="columns"><section class="panel"><div class="sect"><h2>推荐学习单元</h2>${link('courses','全部课程 '+ico('ChevronRight'))}</div>${(state.reviews.length?[...new Set([...(inner(state.reviews[0].unit).prereq),state.reviews[0].unit,8,0])].slice(0,3):[0,3,8]).map(i=>tile(inner(i))).join('')}</section><section class="panel route"><div class="sect"><h2>学习路径</h2>${ico('Network')}</div>${[['能力诊断','识别当前掌握与薄弱点','quiz'],['针对性学习','梳理概念，尝试递进提示','courses'],['复习巩固','重做错题，记录学习证据','review']].map(([t,s,l],i)=>link(l,`<b>0${i+1}</b><div><strong>${t}</strong><small>${s}</small></div>`,'step')).join('')}</section></div>`}
 function courses(){return heading('课程单元','第一学期期中 · 10 个内置原创知识单元')+groups.map(g=>`<section class="panel"><h2>${g}</h2>${units.filter(u=>u.group===g).map(tile).join('')}</section>`).join('')}
 function unit(id){const u=inner(id);if(!u)throw Error('找不到课程')
-return heading(u.name,u.summary)+`<section class="panel lesson"><small>${u.source} · 高数讲义 `+(u.id+1)+`</small><div class="formula">${math(u.formula)}</div><h2>推导与理解</h2><p>${u.note}</p><h2>典型误区</h2><p>${u.trap}</p><p>建议先修　${u.prereq.map(i=>link('unit/'+i,inner(i).name)).join(' · ')||'起点单元'}</p>${link('practice/'+id,'开始单元练习 '+ico('ArrowRight'),'button')}</section>`+([8,9].includes(u.id)?`<section class="panel"><h2>局部逼近实验</h2><label>正弦函数（蓝）与泰勒多项式（橙） <select id="degree"><option>1</option><option selected>3</option><option>5</option></select> 阶</label><canvas id="curve" width="650" height="200"></canvas></section>`:'')}
+return heading(u.name,u.summary)+`<section class="panel lesson"><small>${u.source} · 高数讲义 `+(u.id+1)+`</small><div class="formula">${math(u.formula)}</div>${materialLinks(u.id)}<h2>推导与理解</h2><p>${u.note}</p><h2>典型误区</h2><p>${u.trap}</p><p>建议先修　${u.prereq.map(i=>link('unit/'+i,inner(i).name)).join(' · ')||'起点单元'}</p>${link('practice/'+id,'开始单元练习 '+ico('ArrowRight'),'button')}</section>`+([8,9].includes(u.id)?`<section class="panel"><h2>局部逼近实验</h2><label>正弦函数（蓝）与泰勒多项式（橙） <select id="degree"><option>1</option><option selected>3</option><option>5</option></select> 阶</label><canvas id="curve" width="650" height="200"></canvas></section>`:'')}
 async function render(){document.body.classList.remove('open')
  const [page='home',id]=location.hash.slice(1).split('/')
  try {
@@ -84,11 +84,35 @@ function bind(page,id){
  if(next)next.onclick=()=>{current=null;feedback=null;hint=0;if(page==='redo')location.hash='review';else render()}
  bindMaterials(page,id)
 }
-function library(){return heading('资料库','内置原创示例')+courses()}
-function materialLinks(){return ''}
-function backupUI(){return ''}
-function bindMaterials(){}
-
-async function init(){try{[units,state,questions]=await Promise.all([api('units'),api('state'),api('questions')]);await render()}catch(e){shell('home',heading('连接失败','请确认本地服务正在运行。')+'<button onclick="location.reload()">重试</button>')}}
+let docs=[],modelName=''
+function materialLinks(id){return docs.flatMap(d=>d.sections.map((s,i)=>s.matches[id]?link('library/'+d.id+'~'+i,esc(d.name)+' · '+esc(s.anchor)):null).filter(Boolean)).join('　')}
+function library(ref){
+ if(ref){
+ const [key,index='0']=ref.split('~'),d=docs.find(d=>d.id===key),i=Number(index),s=d?.sections[i]
+ if(!s)throw Error('找不到此资料片段')
+ const ids=Object.keys(s.matches).map(Number).sort((a,b)=>(state.scores[a]??-1)-(state.scores[b]??-1))
+ return heading(esc(d.name),'由资料生成 · 原文与学习单元')+`<section class="panel"><label>原文位置 <select id="anchor">${d.sections.map((v,j)=>`<option value="${j}" ${i===j?'selected':''}>${esc(v.anchor)}</option>`).join('')}</select></label><pre>${esc(s.text)}</pre>${d.empty.length?`<p>第 ${d.empty.join('、')} 页无可提取文本，OCR 不可用，请补充文字版。</p>`:''}</section><section class="panel"><h2>本节学习单元</h2><p>按原文术语关联，并优先列出缺少证据或掌握度较低的单元。</p>${ids.map(n=>`<div class="unitrow"><div><small>原文命中「${esc(s.matches[n])}」 · ${esc(s.anchor)}</small><strong>${inner(n).name}</strong><p>${esc(cite(s.text,s.matches[n]))}</p>${link('unit/'+n,'学习讲义')}　${link('practice/'+n,'练习 · 内置原创示例')}</div></div>`).join('')||'未识别到内置术语，可以阅读原文或自行选择课程。'}</section><section class="panel"><h2>向本地模型追问</h2>${modelName?`<form id="ask"><label>授权片段（可编辑）<textarea name="excerpt" maxlength="1000" required>${esc(s.text.slice(0,500))}</textarea></label><label>问题 <input name="question" maxlength="400" required></label><label><input name="consent" type="checkbox" required> 同意将以上片段和问题发送到本机 Ollama · ${esc(modelName)}</label><button>获取提示</button></form><pre id="model-result"></pre>`:'未启用 Ollama。配置本机模型后可针对选定片段提问。'}</section>`
+ }
+ return heading('资料库','导入自己的高数材料，从原文回到知识点。')+`<section class="panel"><h2>导入学习资料</h2><p>支持文本 PDF、UTF-8 Markdown 与 TXT，每个文件最多 4 MB。</p><form id="upload"><input type="file" required name="file" accept=".pdf,.md,.txt"><button>导入资料</button><p role="status" class="status"></p></form></section><section class="panel"><h2>我的资料</h2>${docs.map(d=>link('library/'+d.id,`<div><strong>${esc(d.name)}</strong><small>由资料生成 · ${d.sections.length} 个原文片段</small></div>${ico('ChevronRight')}`,'unitrow')).join('')||'尚未导入资料。可先使用下方原创讲义。'}</section><section class="panel"><h2>高数期中讲义 · 内置原创示例</h2>${units.map(tile).join('')}</section>`
+}
+function cite(text,word){const i=text.toLowerCase().indexOf(word.toLowerCase());return text.slice(Math.max(0,i-25),i+word.length+60)}
+function backupUI(){return `<section class="panel"><h2>学习进度备份</h2><p>含诊断、练习与复习记录。资料原件请单独保管。</p><button id="export">导出 JSON</button><form id="restore"><input name="file" required type="file" accept=".json"><label><input type="checkbox" required> 用备份替换当前学习记录</label><button>恢复进度</button><p role="status" class="status"></p></form></section>`}
+function bindMaterials(page,ref){
+ const anchor=document.querySelector('#anchor');if(anchor)anchor.onchange=()=>location.hash='library/'+ref.split('~')[0]+'~'+anchor.value
+ const exp=document.querySelector('#export')
+ if(exp)exp.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({version:1,attempts:state.attempts})],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='知序-学习进度.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+ for(const id of ['upload','restore','ask']){
+ const f=document.getElementById(id);if(!f)continue
+ f.onsubmit=async e=>{e.preventDefault();const btn=f.querySelector('button'),msg=f.querySelector('.status')||document.querySelector('#model-result');btn.disabled=true;msg.textContent='正在处理…'
+ try{
+ const fields=new FormData(f),file=fields.get('file')
+ if(id==='ask'){const r=await api('ask',{excerpt:fields.get('excerpt'),question:fields.get('question'),consent:fields.has('consent')});msg.textContent=r.answer}
+ if(id==='upload'){if(file.size>4000000)throw Error('单个文件限 4 MB');const content=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error('文件读取失败'));reader.readAsDataURL(file)})
+ const d=await api('upload',{name:file.name,content});docs=await api('documents');location.hash='library/'+d.id}
+ if(id==='restore'){if(file.size>8000000)throw Error('备份文件超过限制');const result=await api('restore',JSON.parse(await file.text()));state=await api('state');await render();document.querySelector('#restore .status').textContent='已恢复 '+result.count+' 条记录'}
+ }catch(e){msg.textContent=e.message}finally{btn.disabled=false}}
+ }
+}
+async function init(){try{[units,state,questions,docs,modelName]=await Promise.all([api('units'),api('state'),api('questions'),api('documents'),api('model')]);await render()}catch(e){shell('home',heading('连接失败','请确认本地服务正在运行。')+'<button onclick="location.reload()">重试</button>')}}
 window.addEventListener('hashchange',()=>{window.scrollTo(0,0);render()})
 init()
