@@ -130,6 +130,8 @@ def restore(data):
     rows = data.get("attempts")
     if data.get("version") != 1 or not isinstance(rows, list) or len(rows) > 50000:
         raise ValueError("不支持的学习进度备份")
+    from coaching import checked_backup,ensure_evidence,save
+    evidence=[]
     values = []
     for r in rows:
         k, a, m, d = r["q"], r["answer"], r["mode"], r["day"]
@@ -143,11 +145,15 @@ def restore(data):
             raise ValueError("备份记录无效")
         if date.fromisoformat(d).year >= 9999:
             raise ValueError("备份日期无效")
+        evidence.append(checked_backup(k,r.get("evidence",{})))
         values.append((k, a, int(grade(k, a)), date.fromisoformat(d).isoformat(), m))
     with db() as c:
         c.execute("DELETE FROM receipts")
         c.execute("DELETE FROM attempts")
-        c.executemany(
-            "INSERT INTO attempts(q,answer,ok,day,mode) VALUES (?,?,?,?,?)", values
-        )
+        ensure_evidence(c)
+        c.execute("DELETE FROM study_evidence")
+        if c.execute("SELECT 1 FROM sqlite_master WHERE name='receipt_attempts'").fetchone(): c.execute("DELETE FROM receipt_attempts")
+        for value,notes in zip(values,evidence):
+            cur=c.execute("INSERT INTO attempts(q,answer,ok,day,mode) VALUES (?,?,?,?,?)",value)
+            save(c,cur.lastrowid,notes)
     return dict(count=len(values))

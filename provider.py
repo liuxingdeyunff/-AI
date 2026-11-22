@@ -11,8 +11,7 @@ class LocalOnly(HTTPRedirectHandler):
         return None
 
 
-def model():
-    return os.environ.get("ZHIXU_OLLAMA_MODEL", "").strip()
+from model_studio import model
 
 
 def ask(data):

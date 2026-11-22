@@ -17,6 +17,8 @@ from urllib.request import ProxyHandler, build_opener
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 PROFILE = Path(os.environ["LOCALAPPDATA"]) / "ZhixuAI"
+if os.environ.get("ZHIXU_ACCEPTANCE") and os.environ.get("ZHIXU_TEST_PROFILE"):
+    PROFILE=Path(os.environ["ZHIXU_TEST_PROFILE"]) / "ZhixuAI"
 
 
 def open_browser(port):
@@ -42,6 +44,8 @@ def existing_instance():
 def main():
     PROFILE.mkdir(parents=True, exist_ok=True)
     log = RotatingFileHandler(PROFILE / "startup.log",maxBytes=300000,backupCount=2,encoding="utf-8")
+    # A GUI-launched Python process may have no console streams.
+    sys.stderr = log.stream
     logging.basicConfig(level=logging.INFO,handlers=[log],format="%(asctime)s %(levelname)s %(message)s")
     with (PROFILE/"session.lock").open("a+b") as lock:
         lock.seek(0)

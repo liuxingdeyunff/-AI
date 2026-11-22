@@ -10,6 +10,8 @@ from materials import documents, upload, restore
 from provider import ask, model
 from bank import bank, public
 from learning import record, state
+from model_studio import analyze, guides, available, configure, dialogue
+from coaching import session, tutor_chat
 
 ROOT = Path(__file__).resolve().parent
 
@@ -32,6 +34,10 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply({"error": "仅限本机"}, 403)
         if self.path == "/api/instance":
             return self.reply(getattr(self.server, "instance", None))
+        if self.path == "/api/guides": return self.reply(guides())
+        if self.path == "/api/available-models":
+            try: return self.reply(available())
+            except ValueError as e: return self.reply({"error":str(e)},400)
         if self.path == "/api/documents":
             return self.reply(documents())
         if self.path == "/api/model":
@@ -61,6 +67,11 @@ class Handler(SimpleHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise ValueError("需要 JSON 对象")
             for route, action in [
+                ("/api/analyze", analyze),
+                ("/api/discuss", dialogue),
+                ("/api/configure-model", configure),
+                ("/api/coach", session),
+                ("/api/tutor-chat", tutor_chat),
                 ("/api/upload", upload),
                 ("/api/restore", restore),
                 ("/api/ask", ask),

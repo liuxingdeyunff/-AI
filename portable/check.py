@@ -18,7 +18,7 @@ def winpath(path):
 class PackagedServer:
     def __init__(self,root,profile):
         self.profile=profile/"ZhixuAI"
-        self.env={**os.environ,"LOCALAPPDATA":winpath(profile),"ZHIXU_ACCEPTANCE":"1","PYTHONPATH":"","PYTHONHOME":""}
+        self.env={**os.environ,"ZHIXU_TEST_PROFILE":winpath(profile),"LOCALAPPDATA":winpath(profile),"ZHIXU_ACCEPTANCE":"1","PYTHONPATH":"","PYTHONHOME":""}
         self.env["PATH"]=os.environ.get("SystemRoot","C:\\Windows")+"\\System32" if os.name=="nt" else "/usr/bin:/bin"
         self.cmd=([os.environ["WINE64"]] if os.name!="nt" else [])+[str(root/"知序AI.exe")]
         self.p=self.spawn()
