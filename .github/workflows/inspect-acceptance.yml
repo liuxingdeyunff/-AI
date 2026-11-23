@@ -1,0 +1,24 @@
+name: Read portable test failure
+on:
+  push:
+    branches: [feature/portable-adaptive-tutor]
+    paths: ['.github/workflows/inspect-acceptance.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  traceback:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run view 45115934844 --repo "$GITHUB_REPOSITORY" --job 137498665755 --log-failed > "$RUNNER_TEMP/windows-test.log"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          lines=Path(os.environ['RUNNER_TEMP'],'windows-test.log').read_text().splitlines()
+          for line in lines:
+              if any(word in line for word in ('AssertionError','RuntimeError:', 'FileNotFoundError:', 'assert ','TimeoutError:', 'Unicode','Error:')):
+                  print('::notice title=Portable test diagnostic::'+line[-500:])
+          PY
