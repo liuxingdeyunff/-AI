@@ -126,7 +126,7 @@ def tutor_chat(data):
     context=json.dumps(ctx,ensure_ascii=False)[:2400]
     if data.get("preview") is True: return dict(context=context)
     if data.get("context")!=context: raise ValueError("学习记录已改变，请重新预览发送内容。")
-    reply=dialogue(dict(context=context,question=data["question"],consent=data.get("consent")))
+    reply=dialogue({**data,"context":context})
     with db() as c:
         c.execute("BEGIN IMMEDIATE")
         _,e=read_attempt(c,attempt)

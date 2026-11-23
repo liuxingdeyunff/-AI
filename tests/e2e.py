@@ -16,7 +16,8 @@ from test_materials import pdf
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / "docs" / "evidence"
+EVIDENCE = Path(os.environ.get("ZHIXU_SCREENSHOTS",ROOT / "docs" / "evidence"))
+EVIDENCE.mkdir(parents=True,exist_ok=True)
 
 
 def stop(p):

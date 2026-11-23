@@ -7,8 +7,14 @@ test_model_permission (test_materials.Imports.test_model_permission) ... ok
 test_pdf (test_materials.Imports.test_pdf) ... ok
 test_restore_is_atomic (test_materials.Imports.test_restore_is_atomic) ... ok
 test_text_anchors (test_materials.Imports.test_text_anchors) ... ok
+test_adaptation_evidence_and_restore (test_studio.StudioTests.test_adaptation_evidence_and_restore) ... ok
+test_citations_and_structure (test_studio.StudioTests.test_citations_and_structure) ... ok
+test_configuration (test_studio.StudioTests.test_configuration) ... ok
+test_generated_variants (test_studio.StudioTests.test_generated_variants) ... ok
+test_math_precision (test_studio.StudioTests.test_math_precision) ... ok
+test_other_reported_strategy (test_studio.StudioTests.test_other_reported_strategy) ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 0.532s
+Ran 15 tests in 0.845s
 
 OK

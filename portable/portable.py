@@ -23,7 +23,10 @@ if os.environ.get("ZHIXU_ACCEPTANCE") and os.environ.get("ZHIXU_TEST_PROFILE"):
 
 def open_browser(port):
     if not os.environ.get("ZHIXU_ACCEPTANCE"):
-        webbrowser.open(f"http://127.0.0.1:{port}")
+        if webbrowser.open(f"http://127.0.0.1:{port}"):
+            logging.info("浏览器打开请求已交给系统")
+        else:
+            logging.warning("请在浏览器中打开运行窗口显示的本机地址")
 
 
 def existing_instance():
@@ -44,8 +47,6 @@ def existing_instance():
 def main():
     PROFILE.mkdir(parents=True, exist_ok=True)
     log = RotatingFileHandler(PROFILE / "startup.log",maxBytes=300000,backupCount=2,encoding="utf-8")
-    # A GUI-launched Python process may have no console streams.
-    sys.stderr = log.stream
     logging.basicConfig(level=logging.INFO,handlers=[log],format="%(asctime)s %(levelname)s %(message)s")
     with (PROFILE/"session.lock").open("a+b") as lock:
         lock.seek(0)
@@ -63,7 +64,11 @@ def main():
             state()
             if not (ROOT/"dist/index.html").is_file():
                 raise FileNotFoundError("界面文件缺失。")
-            factory = partial(Handler,directory=str(ROOT/"dist"))
+            class LocalHandler(Handler):
+                def log_message(self, fmt, *args):
+                    if self.command and self.path.startswith("/api/") and len(args)>1 and str(args[1]).startswith("5"):
+                        logging.warning("本地 API 暂时失败")
+            factory = partial(LocalHandler,directory=str(ROOT/"dist"))
             try:
                 server = ThreadingHTTPServer(("127.0.0.1",8765), factory)
             except OSError:

@@ -10,7 +10,7 @@ from materials import documents, upload, restore
 from provider import ask, model
 from bank import bank, public
 from learning import record, state
-from model_studio import analyze, guides, available, configure, dialogue
+from model_studio import analyze, guides, available, configure, dialogue, cloud_config
 from coaching import session, tutor_chat
 
 ROOT = Path(__file__).resolve().parent
@@ -70,6 +70,7 @@ class Handler(SimpleHTTPRequestHandler):
                 ("/api/analyze", analyze),
                 ("/api/discuss", dialogue),
                 ("/api/configure-model", configure),
+                ("/api/cloud-model",cloud_config),
                 ("/api/coach", session),
                 ("/api/tutor-chat", tutor_chat),
                 ("/api/upload", upload),

@@ -109,7 +109,7 @@ function shell(page, content) {
     page ||
     "home";
   document.querySelector("#app").innerHTML =
-    `<aside><a href="#home" class="brand"><b>∑</b><strong>知序 <em>AI</em></strong></a><small class="subbrand">高等数学私人导师</small><p class="navhead">学习空间</p><nav>${nav.map(([id, t, i]) => link(id, ico(i) + t, section === id ? "active" : "")).join("")}</nav><div class="profile"><span>知</span><div>本地学习者<small><i></i> ${modelName?"本机模型已启用":"离线基础模式"}</small></div></div></aside><main><header><button aria-label="切换导航" id="menu">${ico("Menu")}</button>学习空间 <b>/</b> <strong>${nav.find((n) => n[0] === section)?.[1] || "学习单元"}</strong><time>${ico("CalendarDays")} ${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</time></header><article>${content}</article></main>`;
+    `<aside><a href="#home" class="brand"><b>∑</b><strong>知序 <em>AI</em></strong></a><small class="subbrand">高等数学私人导师</small><p class="navhead">学习空间</p><nav>${nav.map(([id, t, i]) => link(id, ico(i) + t, section === id ? "active" : "")).join("")}</nav><div class="profile"><span>知</span><div>本地学习者<small><i></i> ${modelName?(modelName.startsWith("云端")?"云端模型已启用":"本机模型已启用"):"离线基础模式"}</small></div></div></aside><main><header><button aria-label="切换导航" id="menu">${ico("Menu")}</button>学习空间 <b>/</b> <strong>${nav.find((n) => n[0] === section)?.[1] || "学习单元"}</strong><time>${ico("CalendarDays")} ${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</time></header><article>${content}</article></main>`;
   document.querySelector("#menu").onclick = () =>
     document.body.classList.toggle("open");
   createIcons({ icons });
@@ -202,7 +202,7 @@ async function render() {
       document.querySelector("#degree").onchange = draw;
     }
     bind(page, id);
-    teaching.bind({page,id,docs,guides:generated,refresh:init,updateState:async()=>{state=await api('state');await render()}});
+    teaching.bind({page,id,docs,guides:generated,model:modelName,refresh:init,updateState:async()=>{state=await api('state');await render()}});
   } catch (e) {
     shell(
       page,
@@ -481,7 +481,7 @@ function library(ref) {
     return (
       heading(esc(d.name), "原文与离线知识索引") +
       link("quiz/" + d.id, "按此资料优先诊断", "button docquiz") + teaching.analysis(d,i,generated,modelName)+
-      `<section class="panel"><label>原文位置 <select id="anchor">${d.sections.map((v, j) => `<option value="${j}" ${i === j ? "selected" : ""}>${esc(v.anchor)}</option>`).join("")}</select></label><pre>${esc(s.text)}</pre>${d.empty.length ? `<p>第 ${d.empty.join("、")} 页无可提取文本，OCR 不可用，请补充文字版。</p>` : ""}</section><section class="panel"><h2>本节学习单元</h2><p>按原文术语关联，并优先列出缺少证据或掌握度较低的单元。</p>${ids.map((n) => `<div class="unitrow"><div><small>原文命中「${esc(s.matches[n])}」 · ${esc(s.anchor)}</small><strong>${inner(n).name}</strong><p>${esc(cite(s.text, s.matches[n]))}</p>${link("unit/" + n, "学习讲义")}　${link("practice/" + n, "练习 · 内置原创示例")}</div></div>`).join("") || "未识别到内置术语，可以阅读原文或自行选择课程。"}</section>${readingTask(d, s, i, ids)}<section class="panel"><h2>向本地模型追问</h2>${modelName ? `<form id="ask"><label>授权片段（可编辑）<textarea name="excerpt" maxlength="1000" required>${esc(s.text.slice(0, 500))}</textarea></label><label>问题 <input name="question" maxlength="400" required></label><label><input name="consent" type="checkbox" required> 同意将以上片段和问题发送到本机 Ollama · ${esc(modelName)}</label><button>获取提示</button></form><pre id="model-result"></pre>` : "未启用 Ollama。配置本机模型后可针对选定片段提问。"}</section>`
+      `<section class="panel"><label>原文位置 <select id="anchor">${d.sections.map((v, j) => `<option value="${j}" ${i === j ? "selected" : ""}>${esc(v.anchor)}</option>`).join("")}</select></label><pre>${esc(s.text)}</pre>${d.empty.length ? `<p>第 ${d.empty.join("、")} 页无可提取文本，OCR 不可用，请补充文字版。</p>` : ""}</section><section class="panel"><h2>本节学习单元</h2><p>按原文术语关联，并优先列出缺少证据或掌握度较低的单元。</p>${ids.map((n) => `<div class="unitrow"><div><small>原文命中「${esc(s.matches[n])}」 · ${esc(s.anchor)}</small><strong>${inner(n).name}</strong><p>${esc(cite(s.text, s.matches[n]))}</p>${link("unit/" + n, "学习讲义")}　${link("practice/" + n, "练习 · 内置原创示例")}</div></div>`).join("") || "未识别到内置术语，可以阅读原文或自行选择课程。"}</section>${readingTask(d, s, i, ids)}<section class="panel"><h2>向模型追问</h2>${modelName ? `<form id="ask"><label>授权片段（可编辑）<textarea name="excerpt" maxlength="1000" required>${esc(s.text.slice(0, 500))}</textarea></label><label>问题 <input name="question" maxlength="400" required></label><label><input name="consent" type="checkbox" required> 同意将以上片段和问题发送到${esc(modelName)}${modelName.startsWith("云端")?"（api.deepseek.com，服务商可能计费）":"（本机）"}</label><button>获取提示</button></form><pre id="model-result"></pre>` : "未启用模型。在资料库选择模型后可针对选定片段提问。"}</section>`
     );
   }
   return (
@@ -532,7 +532,7 @@ function bindMaterials(page, ref) {
           const r = await api("ask", {
             excerpt: fields.get("excerpt"),
             question: fields.get("question"),
-            consent: fields.has("consent"),
+            consent: fields.has("consent"),destination:modelName,cloud_ok:modelName.startsWith("云端")&&fields.has("consent"),
           });
           msg.textContent = r.answer;
         }

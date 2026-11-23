@@ -1,5 +1,6 @@
 name: Live Ollama teaching
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     branches: [feature/portable-adaptive-tutor]

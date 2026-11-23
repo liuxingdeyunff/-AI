@@ -44,7 +44,12 @@ jobs:
         run: |
           Expand-Archive out/ZhixuAI-Windows-x64.zip out/unpacked
           $env:ZHIXU_UNPACKED=(Resolve-Path out/unpacked/ZhixuAI-Windows-x64).Path
-          python tests/e2e.py
+          python portable/desktop-check.py $env:ZHIXU_UNPACKED
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:ZHIXU_SCREENSHOTS="out/screenshots"
+          python tests/e2e.py 2>&1 | Tee-Object -FilePath out/e2e.log
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Compress-Archive -Path out/screenshots,out/e2e.log -DestinationPath out/Windows-acceptance.zip
       - uses: actions/upload-artifact@v4
         with:
           name: ZhixuAI-Windows-x64
@@ -56,9 +61,12 @@ jobs:
         if: always()
         with:
           name: windows-screenshots
-          path: docs/evidence/*.png
+          path: out/screenshots/*.png
+  model-report:
+    if: startsWith(github.ref, 'refs/tags/v0.2.')
+    uses: ./.github/workflows/live-model.yml
   release:
-    needs: portable
+    needs: [portable, model-report]
     if: startsWith(github.ref, 'refs/tags/v0.2.')
     runs-on: ubuntu-latest
     permissions:
@@ -67,6 +75,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ZhixuAI-Windows-x64
+          path: publish
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-ollama-response-and-timings
           path: publish
       - name: Publish tested prerelease
         env:
@@ -88,7 +100,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          existing=$(gh pr list --base main --head feature/portable-adaptive-tutor --json url --jq '.[0].url // ""')
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head feature/portable-adaptive-tutor --json url --jq '.[0].url // ""')
           if [ -n "$existing" ]; then echo "$existing"; else
-            gh pr create --draft --base main --head feature/portable-adaptive-tutor --title "第二轮：Windows 便携软件、资料研读与适应式教学" --body-file docs/PULL_REQUEST.md
+            gh pr create --repo "$GITHUB_REPOSITORY" --draft --base main --head feature/portable-adaptive-tutor --title "第二轮：Windows 便携软件、资料研读与适应式教学" --body-file docs/PULL_REQUEST.md 2>pr-error.log || { echo "::error title=GitHub PR permission::$(cat pr-error.log)"; exit 1; }
           fi
