@@ -38,8 +38,12 @@ def record(data):
         mode == "quiz" and not q["diagnostic"]
     ):
         raise ValueError("答题模式无效")
+    from coaching import ensure_evidence, initial, save
+    evidence=initial(data.get("steps",""),data.get("hints",0))
     ok = grade(q["id"], answer)
     with db() as c:
+        ensure_evidence(c)
+        c.execute("CREATE TABLE IF NOT EXISTS receipt_attempts(token TEXT PRIMARY KEY, attempt INTEGER)")
         token = data.get("request_id")
         new = True
         if token is not None:
@@ -59,11 +63,19 @@ def record(data):
             ) != (q["id"], answer, mode):
                 raise ValueError("这次提交已经处理，请刷新记录。")
         if new:
-            c.execute(
+            cursor=c.execute(
                 "INSERT INTO attempts(q,answer,ok,day,mode) VALUES (?,?,?,?,?)",
                 (q["id"], answer, int(ok), date.today().isoformat(), mode),
             )
+            attempt=cursor.lastrowid
+            save(c,attempt,evidence)
+            if token:
+                c.execute("INSERT INTO receipt_attempts VALUES (?,?)",(token,attempt))
+        else:
+            match=c.execute("SELECT attempt FROM receipt_attempts WHERE token=?",(token,)).fetchone()
+            attempt=match[0] if match else None
     return dict(
+        attempt=attempt,
         ok=bool(ok),
         solution=(
             q["choices"][q["expected"]]
@@ -83,6 +95,12 @@ def record(data):
 def state():
     with db() as c:
         rows = [dict(r) for r in c.execute("SELECT * FROM attempts ORDER BY id")]
+        from coaching import ensure_evidence
+        import json
+        ensure_evidence(c)
+        evidence={r[0]:json.loads(r[1]) for r in c.execute("SELECT attempt,payload FROM study_evidence")}
+        for row in rows:
+            if row["id"] in evidence: row["evidence"]=evidence[row["id"]]
     latest = {r["q"]: r for r in rows}
     reviews = []
     for key in dict.fromkeys(r["q"] for r in rows if not r["ok"]):

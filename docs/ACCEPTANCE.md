@@ -1,4 +1,21 @@
-# 验收记录
+# 第二轮验收记录
+
+候选版本为 `v0.2.0-rc.3`。Windows 软件包使用构建时生成的界面和随包的 Python 运行时。用户通过 EXE 启动。
+
+| 验收项 | 证据 |
+| --- | --- |
+| Windows x64 ZIP 构建、解压启动、重复启动、端口冲突与 SQLite 重启 | [Windows Runner 产物测试](https://github.com/liuxingdeyunff/-AI/actions/runs/45011942997/job/137175961448) |
+| 无开发工具的 Windows 系统 | 同一 Windows 作业运行干净的 Server Core，确认不存在 Python、Node.js、npm、Vite 命令，然后用 ZIP 内的 EXE 判题 |
+| 个性化教学 | 学生写步骤、确认展开方法，答错后变式难度由 2 降至 1；保存步骤、两级提示使用情况和独立判题证据。[浏览器日志](evidence/e2e.log) · [复盘截图](evidence/coaching.png) |
+| 数学、引用、错误处理与备份 | 15 项后端测试。恢复时重新计算变式结果，拒绝无来源引用和循环先修关系，单独验证有限小数精度。[实际输出](evidence/backend.log) |
+| 真实本机模型 | CI 在隔离的 Ollama 中运行 qwen2.5:3b，提交原创材料和合成学生步骤，保存实际回复、用时与模型摘要。本机推理 API 费用为零。[成功运行](https://github.com/liuxingdeyunff/-AI/actions/runs/45012019092) |
+| 云端模型 | DeepSeek 为可选配置。已检查缺少针对目标服务的同意时不会发出请求。未使用付费密钥进行在线验收。 |
+
+首轮真实模型集成测试曾失败，随后调整了先修边界处理，并保留无来源引用的拒绝机制。[失败作业](https://github.com/liuxingdeyunff/-AI/actions/runs/45011714379)
+
+已知限制包括扫描 PDF 需先 OCR，模型研读每次最多选择 6 段、每段开头 1800 字，语言模型的讲解与开放题建议仍需核对。Windows 测试使用 Server Runner 与 Server Core，尚无 Windows 11 消费版实体机的人工验收记录。EXE 未做商业代码签名。
+
+# 第一轮验收历史
 
 云端实测环境为 Linux x86_64、Python 3.12.14、Node.js 24.22.3、npm 11.19.1、Chromium 156。以下截图均由 Playwright 在实际服务器页面上截取。测试数据库存放在临时目录，应用首页从空学习记录开始。
 

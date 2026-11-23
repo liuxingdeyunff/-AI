@@ -1,0 +1,33 @@
+name: Live Ollama teaching
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [feature/portable-adaptive-tutor]
+    paths: ['model_studio.py', 'coaching.py', 'tests/live_model.py', '.github/workflows/live-model.yml']
+permissions:
+  contents: read
+jobs:
+  inference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ZHIXU_LIVE_MODEL: qwen2.5:3b
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Start isolated local CPU inference
+        run: |
+          docker run -d --name tutor-model -p 127.0.0.1:11434:11434 ollama/ollama:0.11.10
+          for i in {1..30}; do curl -fsS http://127.0.0.1:11434/api/version && break; sleep 2; done
+          docker exec tutor-model ollama pull "$ZHIXU_LIVE_MODEL"
+      - name: Extract cited lessons and respond to student steps using the actual model
+        run: python tests/live_model.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: real-ollama-response-and-timings
+          path: live-model.json
+

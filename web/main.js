@@ -1,3 +1,4 @@
+import {studio} from "./studio.js";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import "./style.css";
@@ -99,14 +100,16 @@ const counts = () => [
 ];
 const link = (href, label, cls = "") =>
   `<a class="${cls}" href="#${href}">${label}</a>`;
+const teaching=studio({api,esc,math,link});
+let generated=[];
 const inner = (id) => units[id];
 function shell(page, content) {
   const section =
-    { unit: "courses", practice: "courses", redo: "review" }[page] ||
+    { unit: "courses", practice: "courses", redo: "review", coach:"review", guide:"library" }[page] ||
     page ||
     "home";
   document.querySelector("#app").innerHTML =
-    `<aside><a href="#home" class="brand"><b>∑</b><strong>知序 <em>AI</em></strong></a><small class="subbrand">高等数学私人导师</small><p class="navhead">学习空间</p><nav>${nav.map(([id, t, i]) => link(id, ico(i) + t, section === id ? "active" : "")).join("")}</nav><div class="profile"><span>知</span><div>本地学习者<small><i></i> 离线学习空间</small></div></div></aside><main><header><button aria-label="切换导航" id="menu">${ico("Menu")}</button>学习空间 <b>/</b> <strong>${nav.find((n) => n[0] === section)?.[1] || "学习单元"}</strong><time>${ico("CalendarDays")} ${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</time></header><article>${content}</article></main>`;
+    `<aside><a href="#home" class="brand"><b>∑</b><strong>知序 <em>AI</em></strong></a><small class="subbrand">高等数学私人导师</small><p class="navhead">学习空间</p><nav>${nav.map(([id, t, i]) => link(id, ico(i) + t, section === id ? "active" : "")).join("")}</nav><div class="profile"><span>知</span><div>本地学习者<small><i></i> ${modelName?(modelName.startsWith("云端")?"云端模型已启用":"本机模型已启用"):"离线基础模式"}</small></div></div></aside><main><header><button aria-label="切换导航" id="menu">${ico("Menu")}</button>学习空间 <b>/</b> <strong>${nav.find((n) => n[0] === section)?.[1] || "学习单元"}</strong><time>${ico("CalendarDays")} ${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</time></header><article>${content}</article></main>`;
   document.querySelector("#menu").onclick = () =>
     document.body.classList.toggle("open");
   createIcons({ icons });
@@ -125,10 +128,17 @@ function tile(u) {
     "unitrow",
   );
 }
-function home() {
+function today() {
+  const due = state.reviews.filter(r=>r.ready)
+  if(due.length) return {title:"今天先复习"+inner(due[0].unit).name,why:"有 "+due.length+" 道错题到期。先检验上次的薄弱点，再开始新题。",action:link("redo/"+due[0].q,"开始到期复习 "+ico("ArrowRight"),"button light")}
+  const round=diagnosticRound()
+  if(round.size===10){const weak=[...units].sort((a,b)=>(state.scores[a.id]??0)-(state.scores[b.id]??0))[0];return {title:"今天巩固"+weak.name,why:"根据不同题目的最近作答，这个单元值得优先练习。",action:link("practice/"+weak.id,"开始针对性练习 "+ico("ArrowRight"),"button light")}}
+  return {title:round.size?"继续高数能力诊断":"高等数学能力诊断",why:round.size?"已完成 "+round.size+" / 10 道题，继续补全今天的学习建议。":"先用 10 道题定位薄弱环节，再安排今天的学习。",action:startLink()}
+}
+function home() { const plan=today();
   return (
     heading("学习总览", "从一次诊断开始，找到适合你的高数学习路径。") +
-    `<section class="hero"><canvas id="surface" aria-label="二元函数的曲面网格图"></canvas><div><label>${ico("GraduationCap")} 高等数学 · 第一学期</label><h2>高等数学能力诊断</h2><p>从极限到泰勒展开，定位薄弱环节。<br>用 10 道题，生成你的专属学习建议。</p>${startLink()}</div></section><div class="metrics">${["课程单元", "已答题次", "待巩固错题"].map((t, i) => `<section><span class="metricicon g${i}">${ico(["Layers", "ListChecks", "Target"][i])}</span><div><small>${t}</small><strong>${counts()[i]} <em>${["个", "次", "道"][i]}</em></strong></div></section>`).join("")}</div><div class="columns"><section class="panel"><div class="sect"><h2>推荐学习单元</h2>${link("courses", "全部课程 " + ico("ChevronRight"))}</div>${(state.reviews.length ? [...new Set([...inner(state.reviews[0].unit).prereq, state.reviews[0].unit, 8, 0])].slice(0, 3) : [0, 3, 8]).map((i) => tile(inner(i))).join("")}</section><section class="panel route"><div class="sect"><h2>学习路径</h2>${ico("Network")}</div>${[
+    `<section class="hero"><canvas id="surface" aria-label="二元函数的曲面网格图"></canvas><div><label>${ico("GraduationCap")} 高等数学 · 第一学期</label><h2>${plan.title}</h2><p>${plan.why}</p>${plan.action}</div></section><div class="metrics">${["课程单元", "已答题次", "待巩固错题"].map((t, i) => `<section><span class="metricicon g${i}">${ico(["Layers", "ListChecks", "Target"][i])}</span><div><small>${t}</small><strong>${counts()[i]} <em>${["个", "次", "道"][i]}</em></strong></div></section>`).join("")}</div><div class="columns"><section class="panel"><div class="sect"><h2>推荐学习单元</h2>${link("courses", "全部课程 " + ico("ChevronRight"))}</div>${(state.reviews.length ? [...new Set([...inner(state.reviews[0].unit).prereq, state.reviews[0].unit, 8, 0])].slice(0, 3) : [0, 3, 8]).map((i) => tile(inner(i))).join("")}</section><section class="panel route"><div class="sect"><h2>学习路径</h2>${ico("Network")}</div>${[
       ["能力诊断", "识别当前掌握与薄弱点", "quiz"],
       ["针对性学习", "梳理概念，尝试递进提示", "courses"],
       ["复习巩固", "重做错题，记录学习证据", "review"],
@@ -192,6 +202,7 @@ async function render() {
       document.querySelector("#degree").onchange = draw;
     }
     bind(page, id);
+    teaching.bind({page,id,docs,guides:generated,model:modelName,refresh:init,updateState:async()=>{state=await api('state');await render()}});
   } catch (e) {
     shell(
       page,
@@ -263,7 +274,7 @@ function exercise(mode, id) {
       mode === "quiz" ? "能力诊断" : mode === "redo" ? "错题重做" : "单元练习",
       u.name + " · " + q.source,
     ) +
-    `<section class="panel lesson"><small>${mode === "quiz" ? "诊断 " + number + " / 10" : q.level}</small>${sourceIndex >= 0 ? "<p>对应原文　" + link("library/" + id + "~" + sourceIndex, esc(doc.name) + " · " + esc(doc.sections[sourceIndex].anchor)) + "</p>" : ""}<h2>${q.text}</h2>${q.tex ? `<div class="formula">${math(q.tex)}</div>` : ""}${feedback ? `<div class="feedback"><h3>${feedback.ok ? "回答正确" : "这一步需要再检查"}</h3><p>${feedback.reason}</p><p>参考答案　${esc(feedback.solution)}</p>${feedback.ok ? "" : `<strong>建议排查 · ${feedback.error}</strong><p>下一步　${link("unit/" + feedback.prereq, "复习「" + inner(feedback.prereq).name + "」")}</p>`}</div><button id="next">${mode === "redo" ? "返回复习计划" : mode === "quiz" && number === 10 ? "查看诊断报告" : "继续下一题"}</button>` : `<form id="response"><div class="answer">${q.choices.length ? q.choices.map((v, i) => `<label class="opt"><input type="radio" name="answer" value="${i}" required>${v}</label>`).join("") : '<label>你的答案 <input name="answer" required maxlength="120" autocomplete="off" placeholder="如 -1/6 或 x^2+2*x"></label>'}</div><button>提交答案</button><button type="button" class="muted" id="hint" ${hint === 2 ? "disabled" : ""}>提示 ${hint}/2</button><div id="hints" aria-live="polite"></div><p role="alert" id="error"></p></form>`}</section>`
+    `<section class="panel lesson"><small>${mode === "quiz" ? "诊断 " + number + " / 10" : q.level}</small>${sourceIndex >= 0 ? "<p>对应原文　" + link("library/" + id + "~" + sourceIndex, esc(doc.name) + " · " + esc(doc.sections[sourceIndex].anchor)) + "</p>" : ""}<h2>${q.text}</h2>${q.tex ? `<div class="formula">${math(q.tex)}</div>` : ""}${feedback ? `<div class="feedback"><h3>${feedback.ok ? "回答正确" : "这一步需要再检查"}</h3><details><summary>核对参考步骤与答案</summary><p>${feedback.reason}</p><p>参考答案　${esc(feedback.solution)}</p></details>${link("coach/"+feedback.attempt,"复盘思路与针对性变式","button muted")}${feedback.ok ? "" : `<strong>建议排查 · ${feedback.error}<small>仅据最终结果推测，可通过方法追问进一步核对。</small></strong><p>下一步　${link("unit/" + feedback.prereq, "复习「" + inner(feedback.prereq).name + "」")}</p>`}</div><button id="next">${mode === "redo" ? "返回复习计划" : mode === "quiz" && number === 10 ? "查看诊断报告" : "继续下一题"}</button>` : `<form id="response"><div class="answer">${q.choices.length ? q.choices.map((v, i) => `<label class="opt"><input type="radio" name="answer" value="${i}" required>${v}</label>`).join("") : '<label>你的答案 <input name="answer" required maxlength="120" autocomplete="off" placeholder="如 -1/6 或 x^2+2*x"></label>'}</div><label class="steps">我的推导步骤（选填）<textarea name="steps" maxlength="800" rows="2" placeholder="写下用到的公式、代换或卡住的地方"></textarea></label><button>提交答案</button><button type="button" class="muted" id="hint" ${hint === 2 ? "disabled" : ""}>提示 ${hint}/2</button><div id="hints" aria-live="polite"></div><p role="alert" id="error"></p></form>`}</section>`
   );
 }
 function last(q) {
@@ -358,7 +369,7 @@ function progress() {
         .reverse()
         .map(
           (r) =>
-            `<p>${r.day} · ${inner(findQ(r.q).unit).name} · ${{ quiz: "诊断", practice: "练习", review: "复习" }[r.mode]} · ${r.ok ? "正确" : "需巩固"}</p>`,
+            `<p>${r.day} · ${inner(findQ(r.q).unit).name} · ${{ quiz: "诊断", practice: "练习", review: "复习" }[r.mode]} · ${r.ok ? "正确" : "需巩固"}　${link("coach/"+r.id,"查看作答证据")}</p>`,
         )
         .join("") || "完成第一题后即可查看记录。"
     }</section>` +
@@ -367,7 +378,9 @@ function progress() {
 }
 async function extra(page, id) {
   if (["practice", "quiz", "redo"].includes(page)) return exercise(page, id);
-  if (page === "map") return knowledge();
+  if(page==="guide")return teaching.guidePage(id,generated,docs,modelName)
+  if(page==="coach")return teaching.coachPage(id,state,questions,units,modelName)
+  if (page === "map") return teaching.studyGraph(generated)+knowledge();
   if (page === "review") return reviews();
   if (page === "progress") return progress();
   return library(id);
@@ -392,7 +405,7 @@ function bind(page, id) {
       btn.disabled = true;
       try {
         feedback = await api("answer", {
-          request_id: requestId,
+          request_id: requestId,steps:new FormData(form).get("steps"),hints:hint,
           q: current.id,
           answer: new FormData(form).get("answer"),
           mode: page === "redo" ? "review" : page,
@@ -466,13 +479,13 @@ function library(ref) {
       .map(Number)
       .sort((a, b) => (state.scores[a] ?? -1) - (state.scores[b] ?? -1));
     return (
-      heading(esc(d.name), "由资料生成 · 原文与学习单元") +
-      link("quiz/" + d.id, "按此资料优先诊断", "button docquiz") +
-      `<section class="panel"><label>原文位置 <select id="anchor">${d.sections.map((v, j) => `<option value="${j}" ${i === j ? "selected" : ""}>${esc(v.anchor)}</option>`).join("")}</select></label><pre>${esc(s.text)}</pre>${d.empty.length ? `<p>第 ${d.empty.join("、")} 页无可提取文本，OCR 不可用，请补充文字版。</p>` : ""}</section><section class="panel"><h2>本节学习单元</h2><p>按原文术语关联，并优先列出缺少证据或掌握度较低的单元。</p>${ids.map((n) => `<div class="unitrow"><div><small>原文命中「${esc(s.matches[n])}」 · ${esc(s.anchor)}</small><strong>${inner(n).name}</strong><p>${esc(cite(s.text, s.matches[n]))}</p>${link("unit/" + n, "学习讲义")}　${link("practice/" + n, "练习 · 内置原创示例")}</div></div>`).join("") || "未识别到内置术语，可以阅读原文或自行选择课程。"}</section>${readingTask(d, s, i, ids)}<section class="panel"><h2>向本地模型追问</h2>${modelName ? `<form id="ask"><label>授权片段（可编辑）<textarea name="excerpt" maxlength="1000" required>${esc(s.text.slice(0, 500))}</textarea></label><label>问题 <input name="question" maxlength="400" required></label><label><input name="consent" type="checkbox" required> 同意将以上片段和问题发送到本机 Ollama · ${esc(modelName)}</label><button>获取提示</button></form><pre id="model-result"></pre>` : "未启用 Ollama。配置本机模型后可针对选定片段提问。"}</section>`
+      heading(esc(d.name), "原文与离线知识索引") +
+      link("quiz/" + d.id, "按此资料优先诊断", "button docquiz") + teaching.analysis(d,i,generated,modelName)+
+      `<section class="panel"><label>原文位置 <select id="anchor">${d.sections.map((v, j) => `<option value="${j}" ${i === j ? "selected" : ""}>${esc(v.anchor)}</option>`).join("")}</select></label><pre>${esc(s.text)}</pre>${d.empty.length ? `<p>第 ${d.empty.join("、")} 页无可提取文本，OCR 不可用，请补充文字版。</p>` : ""}</section><section class="panel"><h2>本节学习单元</h2><p>按原文术语关联，并优先列出缺少证据或掌握度较低的单元。</p>${ids.map((n) => `<div class="unitrow"><div><small>原文命中「${esc(s.matches[n])}」 · ${esc(s.anchor)}</small><strong>${inner(n).name}</strong><p>${esc(cite(s.text, s.matches[n]))}</p>${link("unit/" + n, "学习讲义")}　${link("practice/" + n, "练习 · 内置原创示例")}</div></div>`).join("") || "未识别到内置术语，可以阅读原文或自行选择课程。"}</section>${readingTask(d, s, i, ids)}<section class="panel"><h2>向模型追问</h2>${modelName ? `<form id="ask"><label>授权片段（可编辑）<textarea name="excerpt" maxlength="1000" required>${esc(s.text.slice(0, 500))}</textarea></label><label>问题 <input name="question" maxlength="400" required></label><label><input name="consent" type="checkbox" required> 同意将以上片段和问题发送到${esc(modelName)}${modelName.startsWith("云端")?"（api.deepseek.com，服务商可能计费）":"（本机）"}</label><button>获取提示</button></form><pre id="model-result"></pre>` : "未启用模型。在资料库选择模型后可针对选定片段提问。"}</section>`
     );
   }
   return (
-    heading("资料库", "导入自己的高数材料，从原文回到知识点。") +
+    heading("资料库", "导入自己的高数材料，从原文回到知识点。") + teaching.settings(modelName)+
     `<section class="panel"><h2>导入学习资料</h2><p>支持文本 PDF、UTF-8 Markdown 与 TXT，每个文件最多 4 MB。</p><form id="upload"><input type="file" required name="file" accept=".pdf,.md,.txt"><button>导入资料</button><p role="status" class="status"></p></form></section><section class="panel"><h2>我的资料</h2>${docs.map((d) => link("library/" + d.id, `<div><strong>${esc(d.name)}</strong><small>由资料生成 · ${d.sections.length} 个原文片段</small></div>${ico("ChevronRight")}`, "unitrow")).join("") || "尚未导入资料。可先使用下方原创讲义。"}</section><section class="panel"><h2>高数期中讲义 · 内置原创示例</h2>${units.map(tile).join("")}</section>`
   );
 }
@@ -519,7 +532,7 @@ function bindMaterials(page, ref) {
           const r = await api("ask", {
             excerpt: fields.get("excerpt"),
             question: fields.get("question"),
-            consent: fields.has("consent"),
+            consent: fields.has("consent"),destination:modelName,cloud_ok:modelName.startsWith("云端")&&fields.has("consent"),
           });
           msg.textContent = r.answer;
         }
@@ -553,12 +566,12 @@ function bindMaterials(page, ref) {
 }
 async function init() {
   try {
-    [units, state, questions, docs, modelName] = await Promise.all([
+    [units, state, questions, docs, modelName,generated] = await Promise.all([
       api("units"),
       api("state"),
       api("questions"),
       api("documents"),
-      api("model"),
+      api("model"),api("guides"),
     ]);
     await render();
   } catch (e) {

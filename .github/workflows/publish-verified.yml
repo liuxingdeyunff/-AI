@@ -1,0 +1,33 @@
+name: Publish verified Windows candidate
+on:
+  push:
+    branches: [feature/portable-adaptive-tutor]
+    paths: ['.github/workflows/publish-verified.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify source identity and passing jobs before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v0.2.0-rc.3
+          WINDOWS_RUN: '45116390186'
+          MODEL_RUN: '45116390179'
+        run: |
+          set -eu
+          repo="repos/$GITHUB_REPOSITORY"
+          sha=$(gh api "$repo/git/ref/tags/$TAG" --jq '.object.sha')
+          for run in "$WINDOWS_RUN" "$MODEL_RUN"; do
+            test "$(gh api "$repo/actions/runs/$run" --jq .head_sha)" = "$sha"
+          done
+          for job in 137500110371 137500110702; do
+            test "$(gh api "$repo/actions/jobs/$job" --jq .conclusion)" = success
+          done
+          mkdir publish
+          gh run download "$WINDOWS_RUN" --repo "$GITHUB_REPOSITORY" -n ZhixuAI-Windows-x64 -D publish
+          gh run download "$MODEL_RUN" --repo "$GITHUB_REPOSITORY" -n real-ollama-response-and-timings -D publish
+          (cd publish && sha256sum --check SHA256SUMS.txt)
+          gh release create "$TAG" publish/* --verify-tag --repo "$GITHUB_REPOSITORY" --prerelease --title "知序 AI · Windows x64 $TAG" --notes "下载 ZhixuAI-Windows-x64.zip，全部解压并双击知序AI.exe。附 Windows 截图、运行日志和真实模型调用记录。"

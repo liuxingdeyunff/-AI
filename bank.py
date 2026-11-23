@@ -285,7 +285,7 @@ def polynomial(text):
         if isinstance(n, ast.Name) and n.id == "x":
             return x
         if isinstance(n, ast.Constant) and type(n.value) in (int, float):
-            return s.Rational(str(n.value))
+            return s.Rational(ast.get_source_segment(text, n))
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, (ast.USub, ast.UAdd)):
             v = read(n.operand)
             return -v if isinstance(n.op, ast.USub) else v
