@@ -8,7 +8,7 @@
 
 下载 Windows x64 ZIP，选择「全部解压」，双击「知序AI.exe」。包内包含运行环境、符号计算库和前端。关闭「学习服务运行中」窗口即可退出。进度自动保存到当前用户的数据目录。
 
-[Windows 发布包](https://github.com/liuxingdeyunff/-AI/releases/tag/v0.2.0-rc.2) · [中文使用说明](docs/Windows使用说明.md)
+[Windows 发布包](https://github.com/liuxingdeyunff/-AI/releases/tag/v0.2.0-rc.3) · [中文使用说明](docs/Windows使用说明.md)
 
 资料库可选本机 Ollama，也可显式配置自己的 DeepSeek 账户。云端密钥仅在本次运行内存中保存，发送材料或步骤前需要确认范围与费用。开启模型后可生成带逐段引用和建议先修的研读单元。离线模式支持解题步骤记录、方法追问、符号验证和自适应变式。
 
